@@ -12,29 +12,13 @@ const app = express();
 //   MIDDLEWARE
 // < --------------------------------------- >
 
-app.use(cors({ origin: true }));
+app.use(cors());
 
 // < --------------------------------------- >
 //   INITIALIZERS
 // < --------------------------------------- >
 
-const admin = require("firebase-admin");
-admin.initializeApp();
-const db = admin.firestore();
-
-const firebaseConfig = {
-    apiKey: process.env.API_KEY,
-    authDomain: process.env.AUTH_DOMAIN,
-    databaseURL: process.env.DATABASE_URL,
-    projectId: process.env.PROJECT_ID,
-    storageBucket: process.env.STORAGE_BUCKET,
-    messagingSenderId: process.env.MESSAGING_SENDER_ID,
-    appId: process.env.APP_ID,
-    measurementId: process.env.MEASUREMENT_ID,
-};
-
-const firebase = require("firebase");
-firebase.initializeApp(firebaseConfig);
+const { db, admin, firebase } = require("./helpers/initializers");
 
 // < --------------------------------------- >
 //   UTILITIES
@@ -48,6 +32,33 @@ const testEmpty = (str) => {
 //     const emailRegEx = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 //     email.match(emailRegEx) ? true : false;
 // };
+
+const authorizeRequest = (req, res, next) => {
+    let idToken;
+    if (req.headers.authorization) {
+        idToken = req.headers.authorization.split("Bearer ")[1];
+    } else {
+        return res.status(403).json({ error: "Unauthorized request" });
+    }
+    admin
+        .auth()
+        .verifyIdToken(idToken)
+        .then((decodedToken) => {
+            req.user = decodedToken;
+            return db
+                .collection("users")
+                .where("userId", "==", req.user.uid)
+                .limit(1)
+                .get();
+        })
+        .then((data) => {
+            req.user.userName = data.docs[0].data().userName;
+            return next();
+        })
+        .catch((error) => {
+            return res.status(403).json(error);
+        });
+};
 
 // < --------------------------------------- >
 //   ROUTING
@@ -126,7 +137,9 @@ app.post("/signup", (req, res) => {
 
     // short circuit the rest of the operation if our
     // errors object has accumulated any errors
-    Object.keys(inputErrors).length > 0 && res.status(400).json(inputErrors);
+    if (Object.keys(inputErrors).length > 0) {
+        return res.status(400).json(inputErrors);
+    }
     // check if username is available
     db.doc(`/users/${newUser.userName}`)
         .get()
@@ -154,7 +167,7 @@ app.post("/signup", (req, res) => {
             const userCred = {
                 userName: newUser.userName,
                 email: newUser.email,
-                createdAt: new Date().toISOString(),
+                createdAt: new Date(),
                 userId: userId,
             };
             return db.doc(`/users/${newUser.userName}`).set(userCred);
@@ -173,6 +186,37 @@ app.post("/signup", (req, res) => {
         });
 });
 
+// LOGIN
+
+app.post("/login", (req, res) => {
+    const returningUser = {
+        email: req.body.email,
+        password: req.body.password,
+    };
+    let inputErrors = {};
+    if (testEmpty(returningUser.email))
+        inputErrors.email = "Please give an email address";
+    if (testEmpty(returningUser.password))
+        inputErrors.password = "Please enter your password";
+    Object.keys(inputErrors).length > 0 && res.status(400).json(inputErrors);
+
+    firebase
+        .auth()
+        .signInWithEmailAndPassword(returningUser.email, returningUser.password)
+        .then((data) => {
+            return data.user.getIdToken();
+        })
+        .then((userToken) => {
+            return res.json({ userToken });
+        })
+        .catch((error) => {
+            if (error.code === "auth/wrong-password") {
+                return res.status(403).json({ message: "Incorrect password" });
+            }
+            return res.status(500).json({ error: error.code });
+        });
+});
+
 // POSTS
 
 // <- GET ALL posts ->
@@ -187,12 +231,22 @@ app.get("/posts", async (req, res) => {
     res.status(200).send(JSON.stringify(posts));
 });
 
-app.post("/posts", (req, res) => {
+// NEW BLOG POST
+
+app.post("/posts", authorizeRequest, (req, res) => {
     const newPost = {
         postBody: req.body.postBody,
-        userName: req.body.userName,
+        userName: req.user.userName,
+        createdAt: new Date(),
     };
-    return db.collection("posts").add(newPost).then(res.status(200).send());
+    return db
+        .collection("posts")
+        .add(newPost)
+        .then(
+            res
+                .status(200)
+                .json({ message: `new post submitted by ${newPost.userName}` })
+        );
 });
 
 // < --------------------------------------- >
