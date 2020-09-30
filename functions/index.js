@@ -34,32 +34,37 @@ const {
     getUsers,
     getOneUser,
     createUser,
+    addUserDetails,
     updateUser,
     deleteUser,
     signUp,
     logIn,
+    uploadImage,
 } = require("./controllers/users");
 
 const { getPosts, createPost } = require("./controllers/posts");
 
 // <---------- USERS ----------> //
 
-// GET ALL users ->
+// GET ALL users
 app.get("/users", getUsers);
 
-// CREATE NEW user ->
-app.post("/users", createUser);
+// CREATE NEW user
+app.post("/users", authorizeRequest, addUserDetails);
 
-// SHOW ONE user ->
+// SHOW ONE user
 app.get("/users/:id", getOneUser);
 
-// <- UPDATE user ->
+// UPDATE user
 app.put("/users/:id", updateUser);
 
-// <- DELETE user ->
+// DELETE user
 app.delete("/users/:id", deleteUser);
 
-// SIGNUP
+// ADD USER PIC
+app.post("/users/image", authorizeRequest, uploadImage);
+
+// SIGNUP & create new user
 app.post("/signup", signUp);
 
 // LOGIN

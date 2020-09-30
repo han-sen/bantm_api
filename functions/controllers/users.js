@@ -1,5 +1,11 @@
+const BusBoy = require("busboy");
+const path = require("path");
+const os = require("os");
+const fs = require("fs");
 const { admin, db, firebase } = require("../helpers/initializers");
 const { testEmpty } = require("../util/utils");
+
+// register and authenticate a new user
 
 exports.signUp = (req, res) => {
     // prep new user payload from form
@@ -9,6 +15,7 @@ exports.signUp = (req, res) => {
         confirmPassword: req.body.confirmPassword,
         userName: req.body.userName,
     };
+    const stockAvatar = "stockAvatar.png";
     let userToken, userId;
     let inputErrors = {};
 
@@ -63,6 +70,7 @@ exports.signUp = (req, res) => {
                 email: newUser.email,
                 createdAt: new Date(),
                 userId: userId,
+                imageUrl: `https://firebasestorage.googleapis.com/v0/b/${process.env.STORAGE_BUCKET}/o/${stockAvatar}?alt=media`,
             };
             return db.doc(`/users/${newUser.userName}`).set(userCred);
         })
@@ -79,6 +87,8 @@ exports.signUp = (req, res) => {
             }
         });
 };
+
+// log in an existing user
 
 exports.logIn = (req, res) => {
     const returningUser = {
@@ -143,4 +153,62 @@ exports.updateUser = async (req, res) => {
 exports.deleteUser = async (req, res) => {
     await db.collection("users").doc(req.params.id).delete();
     res.status(200).send();
+};
+
+// add user details
+
+exports.addUserDetails = (req, res) => {
+    let userDetails = req.body;
+    db.doc(`/users/${req.user.userName}`)
+        .update(userDetails)
+        .then(() => {
+            return res.status(200).json({ message: "user details updated" });
+        })
+        .catch((error) => {
+            return res.status(500).json({ error: error.code });
+        });
+};
+
+// add user profile pic
+exports.uploadImage = (req, res) => {
+    let imageFileName;
+    let imageFileToBeUpload = {};
+
+    const busBoy = new BusBoy({ headers: req.headers });
+    busBoy.on("file", (fieldname, file, filename, encoding, mimetype) => {
+        const imageSplit = filename.split(".");
+        const imageExtension = imageSplit[imageSplit.length - 1];
+        imageFileName = `${Math.round(
+            Math.random() * 100000
+        )}.${imageExtension}`;
+        const filePath = path.join(os.tmpdir(), imageFileName);
+        imageFileToBeUpload = { filePath, mimetype };
+        file.pipe(fs.createWriteStream(filePath));
+    });
+    busBoy.on("finish", () => {
+        admin
+            .storage()
+            .bucket()
+            .upload(imageFileToBeUpload.filePath, {
+                resumable: false,
+                metadata: {
+                    metadata: {
+                        contentType: imageFileToBeUpload.mimetype,
+                    },
+                },
+            })
+            .then(() => {
+                const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${process.env.STORAGE_BUCKET}/o/${imageFileName}?alt=media`;
+                return db
+                    .doc(`/users/${req.user.userName}`)
+                    .update({ imageUrl: imageUrl });
+            })
+            .then(() => {
+                return res.json({ message: "profile pic uploaded" });
+            })
+            .catch((error) => {
+                return res.status(500).json({ error: error.code });
+            });
+    });
+    busBoy.end(req.rawBody);
 };
