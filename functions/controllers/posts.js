@@ -163,7 +163,8 @@ exports.addLike = (req, res) => {
 };
 
 exports.unLike = (req, res) => {
-    // this route is almost identical to liking a post
+    // this route is essentially identical to liking a post
+    // except we need to decrement like count, and delete the like record
     const likeDoc = db
         .collection("likes")
         .where("userName", "=", req.user.userName)
@@ -195,6 +196,7 @@ exports.unLike = (req, res) => {
                 return (
                     db
                         // delete the 'like' doc that was created when post was initially liked
+                        // data returns an array even with 1 result so we need to add index 0
                         .doc(`/likes/${data.docs[0].id}`)
                         .delete()
                         .then(() => {
@@ -213,5 +215,33 @@ exports.unLike = (req, res) => {
         })
         .catch((error) => {
             res.status(500).json({ error: error.code });
+        });
+};
+
+exports.deletePost = (req, res) => {
+    // get ref to post we want to delete
+    const postToDelete = db.doc(`/posts/${req.params.postId}`);
+    postToDelete
+        .get()
+        .then((doc) => {
+            if (!doc.exists) {
+                return res
+                    .status(404)
+                    .json({ error: "This post no longer exists" });
+            }
+            // make sure that the delete request is coming from the post author
+            if (doc.data().userName !== req.user.userName) {
+                return res.status(503).json({
+                    error: "You don't have permission to delete this post",
+                });
+            } else {
+                return postToDelete.delete();
+            }
+        })
+        .then(() => {
+            return res.json({ message: "Post has been deleted" });
+        })
+        .catch((error) => {
+            return res.status(500).json({ error: error.code });
         });
 };

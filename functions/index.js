@@ -49,6 +49,7 @@ const {
     addComment,
     addLike,
     unLike,
+    deletePost,
 } = require("./controllers/posts");
 
 // <---------- REGISTRATION & LOGIN ----------> //
@@ -71,10 +72,10 @@ app.post("/users", authorizeRequest, addUserDetails);
 app.get("/users/:id", getOneUser);
 
 // UPDATE user
-app.put("/users/:id", updateUser);
+app.put("/users/:id", authorizeRequest, updateUser);
 
 // DELETE user
-app.delete("/users/:id", deleteUser);
+app.delete("/users/:id", authorizeRequest, deleteUser);
 
 // ADD USER PIC
 app.post("/users/image", authorizeRequest, uploadImage);
@@ -90,6 +91,7 @@ app.get("/posts/:postId", getOnePost);
 // LIKE a post
 app.post("/posts/:postId/like", authorizeRequest, addLike);
 
+// UNLIKE a post
 app.post("/posts/:postId/unlike", authorizeRequest, unLike);
 
 // ADD COMMENTS to a post
@@ -98,11 +100,11 @@ app.post("/posts/:postId/comment", authorizeRequest, addComment);
 // CREATE NEW post
 app.post("/posts", authorizeRequest, createPost);
 
+// DELETE a post
+app.delete("/posts/:postId", authorizeRequest, deletePost);
+
 // TODOS
 // DELETE POST
-// LIKE POST
-// UNLIKE POST
-// COMMENT ON POST
 
 // < --------------------------------------- >
 //   EXPORTS
