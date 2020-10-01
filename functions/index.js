@@ -42,14 +42,22 @@ const {
     uploadImage,
 } = require("./controllers/users");
 
-const { getPosts, createPost } = require("./controllers/posts");
+const { getPosts, getOnePost, createPost } = require("./controllers/posts");
+
+// <---------- REGISTRATION & LOGIN ----------> //
+
+// SIGNUP & create new user
+app.post("/signup", signUp);
+
+// LOGIN
+app.post("/login", logIn);
 
 // <---------- USERS ----------> //
 
 // GET ALL users
 app.get("/users", getUsers);
 
-// CREATE NEW user
+// ADD USER details
 app.post("/users", authorizeRequest, addUserDetails);
 
 // SHOW ONE user
@@ -64,19 +72,22 @@ app.delete("/users/:id", deleteUser);
 // ADD USER PIC
 app.post("/users/image", authorizeRequest, uploadImage);
 
-// SIGNUP & create new user
-app.post("/signup", signUp);
-
-// LOGIN
-app.post("/login", logIn);
-
 // <---------- POSTS ----------> //
 
 // GET ALL posts
 app.get("/posts", getPosts);
 
+// GET ONE post
+app.get("/posts/:postId", getOnePost);
+
 // CREATE NEW post
 app.post("/posts", authorizeRequest, createPost);
+
+// TODOS
+// DELETE POST
+// LIKE POST
+// UNLIKE POST
+// COMMENT ON POST
 
 // < --------------------------------------- >
 //   EXPORTS
