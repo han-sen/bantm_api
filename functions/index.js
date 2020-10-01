@@ -42,7 +42,14 @@ const {
     uploadImage,
 } = require("./controllers/users");
 
-const { getPosts, getOnePost, createPost } = require("./controllers/posts");
+const {
+    getPosts,
+    getOnePost,
+    createPost,
+    addComment,
+    addLike,
+    unLike,
+} = require("./controllers/posts");
 
 // <---------- REGISTRATION & LOGIN ----------> //
 
@@ -79,6 +86,14 @@ app.get("/posts", getPosts);
 
 // GET ONE post
 app.get("/posts/:postId", getOnePost);
+
+// LIKE a post
+app.post("/posts/:postId/like", authorizeRequest, addLike);
+
+app.post("/posts/:postId/unlike", authorizeRequest, unLike);
+
+// ADD COMMENTS to a post
+app.post("/posts/:postId/comment", authorizeRequest, addComment);
 
 // CREATE NEW post
 app.post("/posts", authorizeRequest, createPost);
