@@ -1,7 +1,10 @@
 const { admin, db, firebase } = require("../helpers/initializers");
 
 exports.getPosts = async (req, res) => {
-    const snapshot = await db.collection("posts").get();
+    const snapshot = await db
+        .collection("posts")
+        .orderBy("createdAt", "desc")
+        .get();
     let posts = [];
     snapshot.forEach((doc) => {
         let id = doc.id;
@@ -54,7 +57,7 @@ exports.createPost = (req, res) => {
         imageUrl: req.user.imageUrl,
         likes: 0,
         comments: 0,
-        createdAt: new Date(),
+        createdAt: new Date().toISOString(),
     };
     return db
         .collection("posts")
@@ -73,7 +76,7 @@ exports.addComment = (req, res) => {
     // add in the user's avatar so we can display it inline on the front-end
     const newComment = {
         commentBody: req.body.commentBody,
-        createdAt: new Date(),
+        createdAt: new Date().toISOString(),
         postId: req.params.postId,
         userName: req.user.userName,
         imageUrl: req.user.imageUrl,

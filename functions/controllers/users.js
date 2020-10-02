@@ -78,6 +78,7 @@ exports.signUp = (req, res) => {
             return res.status(201).json({ userToken });
         })
         .catch((error) => {
+            console.log(error);
             if (error.code === "auth/email-already-in-use") {
                 return res
                     .status(400)
@@ -112,10 +113,10 @@ exports.logIn = (req, res) => {
             return res.json({ userToken });
         })
         .catch((error) => {
-            if (error.code === "auth/wrong-password") {
-                return res.status(403).json({ message: "Incorrect password" });
-            }
-            return res.status(500).json({ error: error.code });
+            console.log(error);
+            return res
+                .status(403)
+                .json({ message: "Incorrect login information" });
         });
 };
 
@@ -130,12 +131,17 @@ exports.getUsers = async (req, res) => {
     res.status(200).send(JSON.stringify(users));
 };
 
-exports.getOneUser = async (req, res) => {
-    const snapshot = await db.collection("users").doc(req.params.id).get();
-    const userId = snapshot.id;
-    const userData = snapshot.data();
-
-    res.status(200).send(JSON.stringify({ id: userId, ...userData }));
+exports.getOneUser = (req, res) => {
+    db.doc(`/users/${req.user.userName}`)
+        .get()
+        .then((doc) => {
+            userInfo = doc.data();
+            return res.status(200).send(JSON.stringify(userInfo));
+        })
+        .catch((error) => {
+            console.log(error);
+            return res.status(500).json({ error: error.code });
+        });
 };
 
 exports.createUser = async (req, res) => {
@@ -165,6 +171,7 @@ exports.addUserDetails = (req, res) => {
             return res.status(200).json({ message: "user details updated" });
         })
         .catch((error) => {
+            console.log(error);
             return res.status(500).json({ error: error.code });
         });
 };

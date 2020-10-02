@@ -63,13 +63,13 @@ app.post("/login", logIn);
 // <---------- USERS ----------> //
 
 // GET ALL users
-app.get("/users", getUsers);
+app.get("/users", authorizeRequest, getUsers);
 
 // ADD USER details
 app.post("/users", authorizeRequest, addUserDetails);
 
 // SHOW ONE user
-app.get("/users/:id", getOneUser);
+app.get("/users/:id", authorizeRequest, getOneUser);
 
 // UPDATE user
 app.put("/users/:id", authorizeRequest, updateUser);
@@ -94,7 +94,7 @@ app.post("/posts/:postId/like", authorizeRequest, addLike);
 // UNLIKE a post
 app.post("/posts/:postId/unlike", authorizeRequest, unLike);
 
-// ADD COMMENTS to a post
+// ADD COMMENT to a post
 app.post("/posts/:postId/comment", authorizeRequest, addComment);
 
 // CREATE NEW post
@@ -103,8 +103,15 @@ app.post("/posts", authorizeRequest, createPost);
 // DELETE a post
 app.delete("/posts/:postId", authorizeRequest, deletePost);
 
-// TODOS
-// DELETE POST
+// TODO -- USER CHANGES IMAGES TRIGGER
+// need to add new imageURL to all of their posts
+// FB has a 'change' object to listen to
+
+// TODO -- NOTIFICATION SYSTEM
+// add a cloud trigger for likes and comments
+// push a new notification document with:
+// name of liker/commenter, post being liked/commented, and post owner
+// then we can get display a notification feed
 
 // < --------------------------------------- >
 //   EXPORTS
