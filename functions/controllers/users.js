@@ -131,6 +131,19 @@ exports.getUsers = async (req, res) => {
     res.status(200).send(JSON.stringify(users));
 };
 
+exports.getUserByAuth = (req, res) => {
+    db.doc(`/users/${req.user.userName}`)
+        .get()
+        .then((doc) => {
+            userInfo = doc.data();
+            return res.status(200).send(JSON.stringify(userInfo));
+        })
+        .catch((error) => {
+            console.log(error);
+            return res.status(500).json({ error: error.code });
+        });
+};
+
 exports.getOneUser = (req, res) => {
     db.doc(`/users/${req.user.userName}`)
         .get()

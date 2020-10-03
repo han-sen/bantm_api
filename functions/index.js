@@ -31,6 +31,7 @@ const { testEmpty, authorizeRequest } = require("./util/utils");
 // < --------------------------------------- >
 
 const {
+    getUserByAuth,
     getUsers,
     getOneUser,
     createUser,
@@ -61,6 +62,9 @@ app.post("/signup", signUp);
 app.post("/login", logIn);
 
 // <---------- USERS ----------> //
+
+// GET CURRENT USER DETAILS FROM AUTH TOKEN
+app.get("/user", authorizeRequest, getUserByAuth);
 
 // GET ALL users
 app.get("/users", authorizeRequest, getUsers);
