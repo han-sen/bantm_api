@@ -16,6 +16,7 @@ exports.signUp = (req, res) => {
         userName: req.body.userName,
     };
     const stockAvatar = "stockAvatar.png";
+    const stockHeader = "stockHeader.png";
     let userToken, userId;
     let inputErrors = {};
 
@@ -70,7 +71,10 @@ exports.signUp = (req, res) => {
                 email: newUser.email,
                 createdAt: new Date(),
                 userId: userId,
+                location: "The Internet",
+                bio: "I was born at a very young age..",
                 imageUrl: `https://firebasestorage.googleapis.com/v0/b/${process.env.STORAGE_BUCKET}/o/${stockAvatar}?alt=media`,
+                headerUrl: `https://firebasestorage.googleapis.com/v0/b/${process.env.STORAGE_BUCKET}/o/${stockHeader}?alt=media`,
             };
             return db.doc(`/users/${newUser.userName}`).set(userCred);
         })
@@ -132,6 +136,7 @@ exports.getUsers = async (req, res) => {
 };
 
 exports.getUserByAuth = (req, res) => {
+    // finds user doc that matches the auth token in request header
     db.doc(`/users/${req.user.userName}`)
         .get()
         .then((doc) => {
@@ -145,11 +150,19 @@ exports.getUserByAuth = (req, res) => {
 };
 
 exports.getOneUser = (req, res) => {
-    db.doc(`/users/${req.user.userName}`)
+    db.doc(`/users/${req.params.id}`)
         .get()
         .then((doc) => {
             userInfo = doc.data();
-            return res.status(200).send(JSON.stringify(userInfo));
+            const userDetails = {
+                userId: userInfo.userId,
+                userName: userInfo.userName,
+                location: userInfo.location,
+                imageUrl: userInfo.imageUrl,
+                headerUrl: userInfo.headerUrl,
+                bio: userInfo.bio,
+            };
+            return res.status(200).send(JSON.stringify(userDetails));
         })
         .catch((error) => {
             console.log(error);
@@ -163,10 +176,19 @@ exports.createUser = async (req, res) => {
     res.status(201).send();
 };
 
-exports.updateUser = async (req, res) => {
-    const body = req.body;
-    await db.collection("users").doc(req.params.id).update(body);
-    res.status(200).send();
+exports.updateUser = (req, res) => {
+    const userDetails = {
+        location: req.body.location,
+        bio: req.body.bio,
+    };
+    if (req.body.imageUrl) {
+        userDetails.imageUrl = req.body.imageUrl;
+    }
+    if (req.body.headerUrl) {
+        userDetails.headerUrl = req.body.headerUrl;
+    }
+    db.collection("users").doc(req.user.userName).update(userDetails);
+    res.status(200).json(userDetails);
 };
 
 exports.deleteUser = async (req, res) => {
@@ -232,3 +254,5 @@ exports.uploadImage = (req, res) => {
     });
     busBoy.end(req.rawBody);
 };
+
+// ^^replicate this logic to add photo to post ?

@@ -14,6 +14,21 @@ exports.getPosts = async (req, res) => {
     res.status(200).send(JSON.stringify(posts));
 };
 
+// get posts that match a username
+exports.getUsersPosts = async (req, res) => {
+    const snapshot = await db
+        .collection("posts")
+        .where("userName", "=", req.params.userName)
+        .orderBy("createdAt", "desc")
+        .get();
+    let posts = [];
+    snapshot.forEach((doc) => {
+        let data = doc.data();
+        posts.push(data);
+    });
+    res.status(200).send(JSON.stringify(posts));
+};
+
 exports.getOnePost = (req, res) => {
     let postData = {};
     db.doc(`/posts/${req.params.postId}`)
@@ -53,6 +68,7 @@ exports.createPost = (req, res) => {
     // otherwise FB will give a NaN when we try and update them
     const newPost = {
         postBody: req.body.postBody,
+        postImg: req.body.postImg,
         userName: req.user.userName,
         imageUrl: req.user.imageUrl,
         likes: 0,
@@ -134,31 +150,24 @@ exports.addLike = (req, res) => {
             }
         })
         .then((data) => {
+            // if like record doesn't exist then we haven't like this post yet and can proceed
+            // add a new like doc containing to id of the 'liked' post, and the user name of the 'liker'
             if (data.empty) {
-                // if like record doesn't exist then we haven't like this post yet and can proceed
-                // add a new like doc containing to id of the 'liked' post, and the user name of the 'liker'
-                return (
-                    db
-                        .collection("likes")
-                        .add({
-                            postId: req.params.postId,
-                            userName: req.user.userName,
-                        })
-                        // then we increment the like count on the json object and post document
-                        .then(() => {
-                            postData.likes++;
-                            return postDoc.update({ likes: postData.likes });
-                        })
-                        // now we can return out json object with updated likes
-                        .then(() => {
-                            return res.json(postData);
-                        })
-                );
+                postData.likes++;
+                return postDoc.update({ likes: postData.likes });
             } else {
                 return res
                     .status(400)
                     .json({ error: "This post has already been liked" });
             }
+        })
+        .then(() => {
+            return db.doc(`/users/${req.user.userName}`).update({
+                likes: arrayUnion(postData.postId),
+            });
+        })
+        .then(() => {
+            return res.json(postData);
         })
         .catch((error) => {
             res.status(500).json({ error: error.code });

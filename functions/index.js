@@ -51,6 +51,7 @@ const {
     addLike,
     unLike,
     deletePost,
+    getUsersPosts,
 } = require("./controllers/posts");
 
 // <---------- REGISTRATION & LOGIN ----------> //
@@ -73,7 +74,7 @@ app.get("/users", authorizeRequest, getUsers);
 app.post("/users", authorizeRequest, addUserDetails);
 
 // SHOW ONE user
-app.get("/users/:id", authorizeRequest, getOneUser);
+app.get("/users/:id", getOneUser);
 
 // UPDATE user
 app.put("/users/:id", authorizeRequest, updateUser);
@@ -88,6 +89,9 @@ app.post("/users/image", authorizeRequest, uploadImage);
 
 // GET ALL posts
 app.get("/posts", getPosts);
+
+// GET ALL posts by ONE USER
+app.get("posts/users/:userName", getUsersPosts);
 
 // GET ONE post
 app.get("/posts/:postId", getOnePost);
@@ -107,10 +111,6 @@ app.post("/posts", authorizeRequest, createPost);
 // DELETE a post
 app.delete("/posts/:postId", authorizeRequest, deletePost);
 
-// TODO -- USER CHANGES IMAGES TRIGGER
-// need to add new imageURL to all of their posts
-// FB has a 'change' object to listen to
-
 // TODO -- NOTIFICATION SYSTEM
 // add a cloud trigger for likes and comments
 // push a new notification document with:
@@ -122,3 +122,31 @@ app.delete("/posts/:postId", authorizeRequest, deletePost);
 // < --------------------------------------- >
 
 exports.api = functions.https.onRequest(app);
+
+// USER CHANGES IMAGES TRIGGER
+// need to add new imageURL to all of their posts
+
+exports.onUserImageChange = functions
+    .region("us-east1")
+    .firestore.document("/users/{userId}")
+    .onUpdate((change) => {
+        console.log(change.before.data());
+        console.log(change.after.data());
+        if (change.before.data().imageUrl !== change.after.data().imageUrl) {
+            console.log("image has changed");
+            const batch = db.batch();
+            return db
+                .collection("posts")
+                .where("userName", "==", change.before.data().userName)
+                .get()
+                .then((data) => {
+                    data.forEach((doc) => {
+                        const post = db.doc(`/posts/${doc.id}`);
+                        batch.update(post, {
+                            imageUrl: change.after.data().imageUrl,
+                        });
+                    });
+                    return batch.commit();
+                });
+        } else return true;
+    });
